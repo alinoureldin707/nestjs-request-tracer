@@ -8,9 +8,13 @@ export type RedactOptions = {
    * pin, pincode, otp, cvv, cvc, iban, pan, ssn, and the pairs api/access/
    * private/secret + key and client + secret. So `pinCode` is hidden but
    * `ping` and `shipping` are not.
+   *
+   * `false` hides no field by name.
    */
-  fields?: RegExp | ((key: string) => boolean);
-  /** Extra check on any string value, wherever it sits. JWTs are always hidden. */
+  fields?: RegExp | ((key: string) => boolean) | false;
+  /** Hide any string shaped like a JWT, wherever it sits. @default true */
+  jwt?: boolean;
+  /** Extra check on any string value, wherever it sits. */
   values?: (value: string) => boolean;
   /** What a hidden value is replaced with. @default '[REDACTED]' */
   replacement?: string;
@@ -33,7 +37,12 @@ export type RequestTracingOptions = {
   maxCallsPerRequest?: number;
   /** Print each finished request's call tree to the console. @default true */
   console?: boolean;
-  redact?: RedactOptions;
+  /**
+   * What is hidden from the recorded values. On by default; `false` records
+   * everything as is — tokens, passwords, query strings — which is what you
+   * want while debugging locally, and never on a shared server.
+   */
+  redact?: RedactOptions | false;
   /**
    * Which providers to wrap, by class name. By default, every provider whose
    * class comes from your own code (not from node_modules) is wrapped, except
@@ -62,10 +71,7 @@ export type ResolvedOptions = Required<
 > & {
   include?: (className: string) => boolean;
   exclude?: (className: string) => boolean;
-  redact: {
-    fields: (key: string) => boolean;
-    replacement: string;
-  } & Pick<RedactOptions, 'values' | 'urls'>;
+  redact: ResolvedRedaction;
 };
 
 const SENSITIVE_WORDS = new Set([
@@ -100,6 +106,16 @@ export function isSensitiveFieldName(key: string): boolean {
   );
 }
 
+export type ResolvedRedaction = {
+  /** False when `redact: false`: values are recorded untouched. */
+  enabled: boolean;
+  fields?: (key: string) => boolean;
+  jwt: boolean;
+  values?: (value: string) => boolean;
+  urls?: (url: string) => string;
+  replacement: string;
+};
+
 export function resolveOptions(
   options: RequestTracingOptions = {},
 ): ResolvedOptions {
@@ -116,16 +132,24 @@ export function resolveOptions(
     http: options.http ?? true,
     axiosInstances: options.axiosInstances ?? [],
     ignorePaths: options.ignorePaths ?? [],
-    redact: {
-      fields: toFieldCheck(options.redact?.fields),
-      values: options.redact?.values,
-      urls: options.redact?.urls,
-      replacement: options.redact?.replacement ?? '[REDACTED]',
-    },
+    redact: resolveRedaction(options.redact),
   };
 }
 
-function toFieldCheck(fields: RedactOptions['fields']): (key: string) => boolean {
+function resolveRedaction(redact: RequestTracingOptions['redact']): ResolvedRedaction {
+  if (redact === false) return { enabled: false, jwt: false, replacement: '[REDACTED]' };
+  return {
+    enabled: true,
+    fields: toFieldCheck(redact?.fields),
+    jwt: redact?.jwt ?? true,
+    values: redact?.values,
+    urls: redact?.urls,
+    replacement: redact?.replacement ?? '[REDACTED]',
+  };
+}
+
+function toFieldCheck(fields: RedactOptions['fields']): ((key: string) => boolean) | undefined {
+  if (fields === false) return undefined;
   if (!fields) return isSensitiveFieldName;
   if (typeof fields === 'function') return fields;
   return (key) => {

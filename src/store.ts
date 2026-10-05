@@ -54,15 +54,22 @@ const traces: RequestTrace[] = [];
 let settings: Pick<ResolvedOptions, 'maxRequests' | 'maxCallsPerRequest' | 'redact'> = {
   maxRequests: 100,
   maxCallsPerRequest: 3000,
-  redact: { fields: (key) => /token|secret|password/i.test(key), replacement: '[REDACTED]' },
+  redact: {
+    enabled: true,
+    fields: (key) => /token|secret|password/i.test(key),
+    jwt: true,
+    replacement: '[REDACTED]',
+  },
 };
 
 export function configureStore(options: ResolvedOptions): void {
   settings = options;
 }
 
-/** [url] without its query string, through the configured URL redaction. */
+/** [url] without its query string, through the configured URL redaction;
+ * untouched when redaction is off. */
 export function redactUrl(url: string): string {
+  if (!settings.redact.enabled) return url;
   const path = url.split('?')[0];
   return settings.redact.urls ? settings.redact.urls(path) : path;
 }
@@ -209,8 +216,9 @@ export function clearRequestTraces(): void {
 }
 
 /**
- * A JSON-safe, redacted copy of [value]: secrets by field name or value shape,
- * cycles, depth, long strings and long lists are cut down.
+ * A JSON-safe copy of [value], redacted unless `redact: false`: secrets by
+ * field name or value shape; cycles, depth, long strings and long lists are
+ * cut down either way.
  */
 export function toTraceValue(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
   if (value === undefined || value === null) return value;
@@ -218,7 +226,8 @@ export function toTraceValue(value: unknown, depth = 0, seen = new WeakSet<objec
 
   switch (typeof value) {
     case 'string':
-      if (JWT_PATTERN.test(value) || redact.values?.(value)) return redact.replacement;
+      if (redact.enabled && ((redact.jwt && JWT_PATTERN.test(value)) || redact.values?.(value)))
+        return redact.replacement;
       return value.length > MAX_STRING_LENGTH
         ? `${value.slice(0, MAX_STRING_LENGTH)}… (${value.length} chars)`
         : value;
@@ -255,7 +264,7 @@ export function toTraceValue(value: unknown, depth = 0, seen = new WeakSet<objec
   const copy: Record<string, unknown> = {};
   for (const [key, entry] of entries.slice(0, MAX_OBJECT_KEYS)) {
     // A flag such as `mustChangePin` says nothing about the secret itself.
-    const hidden = typeof entry !== 'boolean' && redact.fields(key);
+    const hidden = redact.enabled && typeof entry !== 'boolean' && (redact.fields?.(key) ?? false);
     copy[key] = hidden ? redact.replacement : toTraceValue(entry, depth + 1, seen);
   }
   if (entries.length > MAX_OBJECT_KEYS) copy['…'] = `${entries.length - MAX_OBJECT_KEYS} more keys`;

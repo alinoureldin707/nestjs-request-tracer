@@ -42,8 +42,8 @@ let installed = false;
  * ```
  *
  * Off when `NODE_ENV=production` unless `enabled` says otherwise. The values
- * recorded are redacted (`options.redact`), but they are your request data:
- * do not expose the viewer on a public deployment.
+ * recorded are redacted unless `redact: false`, but they are your request
+ * data either way: do not expose the viewer on a public deployment.
  *
  * Returns whether tracing was installed.
  */
@@ -104,5 +104,8 @@ export function setupRequestTracing(app: INestApplication, options: RequestTraci
   logger.log(
     `Request tracing on: ${wrapped.methods} methods in ${wrapped.providers} providers, ${prismaModels} Prisma models, ${caches} cache, ${axiosClients} axios clients. Viewer at ${resolved.path}`,
   );
+  if (!resolved.redact.enabled) {
+    logger.warn('Redaction is off (redact: false): tokens, passwords and query strings are recorded as is.');
+  }
   return true;
 }

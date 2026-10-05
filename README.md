@@ -71,8 +71,9 @@ setupRequestTracing(app, {
   maxRequests: 100,                       // requests kept in memory
   maxCallsPerRequest: 3000,               // a trace stops growing past this
   console: true,                          // print each request's tree
-  redact: {
-    fields: /secret|token|password/i,     // or (key) => boolean; see below
+  redact: {                               // or `false` to record everything as is
+    fields: /secret|token|password/i,     // or (key) => boolean, or false; see below
+    jwt: true,                            // hide JWT-shaped strings anywhere
     values: (value) => value.startsWith('sk_live_'),
     replacement: '[REDACTED]',
     urls: (url) => url.replace(/\/devices\/[^/]+/, '/devices/[REDACTED]'),
@@ -89,15 +90,34 @@ setupRequestTracing(app, {
 
 ### Redaction
 
-Every argument, result and error goes through redaction before it is stored:
+By default every argument, result and error goes through redaction before it is stored:
 
 - **Field names.** By default a key is hidden when one of its words (`accessToken` → access, token) is authorization, password, passwd, token, secret, cookie, session, pin, pincode, otp, cvv, cvc, iban, pan or ssn, or a pair api/access/private/secret + key or client + secret. `pinCode` is hidden; `ping` and `shipping` are not. Boolean values are never hidden (`mustChangePin: true` says nothing about the PIN).
 - **Arguments are named after the parameters.** `getUser(token)` is recorded as `{ token: … }`, so a secret passed positionally is caught too.
 - **JWTs** are hidden wherever they appear.
 - **URLs** lose their query string; the params are shown, redacted, instead.
 
-The data is still your request data: names, emails, amounts. Keep the viewer
-off public deployments.
+#### Turning it off
+
+When you are debugging locally and need to see the real token, password or
+query string:
+
+```ts
+setupRequestTracing(app, { redact: false });
+```
+
+Everything is then recorded as is, and a warning is logged at startup. Only
+part of it can be switched off too: `redact: { fields: false }` keeps the JWT
+check, `redact: { jwt: false }` keeps the field-name check.
+
+A common setup is to redact everywhere except on your own machine:
+
+```ts
+setupRequestTracing(app, { redact: process.env.APP_ENV === 'local' ? false : {} });
+```
+
+Redacted or not, this is your request data: names, emails, amounts. Keep the
+viewer off public deployments.
 
 ### Tracing your own code
 

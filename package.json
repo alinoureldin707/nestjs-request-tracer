@@ -1,8 +1,8 @@
 {
   "name": "nestjs-request-tracer",
   "author": "Ali Noureldin <alinoureldin707@gmail.com>",
-  "version": "0.1.0",
-  "description": "See every function call, argument, result, database query and outgoing HTTP call a NestJS request makes — as a tree, in a built-in web viewer. One line in main.ts.",
+  "version": "0.2.0",
+  "description": "See every function call, argument, result, database query and outgoing HTTP call a NestJS request makes \u2014 as a tree, in a built-in web viewer. One line in main.ts.",
   "keywords": [
     "nestjs",
     "nest",
@@ -20,7 +20,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=18"

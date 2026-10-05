@@ -1,0 +1,47 @@
+{
+  "name": "nestjs-request-tracer",
+  "author": "Ali Noureldin <alinoureldin707@gmail.com>",
+  "version": "0.1.0",
+  "description": "See every function call, argument, result, database query and outgoing HTTP call a NestJS request makes — as a tree, in a built-in web viewer. One line in main.ts.",
+  "keywords": [
+    "nestjs",
+    "nest",
+    "tracing",
+    "debug",
+    "devtools",
+    "request",
+    "prisma",
+    "axios",
+    "call-tree"
+  ],
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run build"
+  },
+  "peerDependencies": {
+    "@nestjs/common": ">=9.0.0",
+    "@nestjs/core": ">=9.0.0",
+    "reflect-metadata": ">=0.1.13",
+    "rxjs": ">=7.0.0"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/core": "^11.1.9",
+    "@types/node": "^22.10.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "typescript": "^5.7.0"
+  }
+}
